@@ -34,6 +34,89 @@ class Board:
                 if (row + column) % 2 == 1:
                     self.white_pawns.append((row, column))
 
+    def field_exists(self, row, column):
+        return row >= 0 and row < self.size and column >= 0 and column < self.size
+
+    def check_position(self, row, column):
+        if (row, column) in self.black_pawns:
+            return Pawns.BLACK_PAWN
+        elif (row, column) in self.white_pawns:
+            return Pawns.WHITE_PAWN
+        else:
+            return None
+
+    def get_capture_moves(self, row, column, pawn):
+        possible_capture_moves = []
+
+        if pawn == Pawns.BLACK_PAWN:
+            direction = 1
+        elif pawn == Pawns.WHITE_PAWN:
+            direction = -1
+
+        for position in [
+            (row + direction * 1, column - 1),
+            (row + direction * 1, column + 1),
+        ]:
+            if not self.field_exists(*position):
+                continue
+            in_position = self.check_position(*position)
+            if in_position and in_position != pawn:
+                if position[1] < column:
+                    next_column = position[1] - 1
+                elif position[1] > column:
+                    next_column = position[1] + 1
+                next_position = (position[0] + direction * 1, next_column)
+                if not self.field_exists(*next_position):
+                    continue
+                if not self.check_position(*next_position):
+                    possible_capture_moves.append(next_position)
+                    possible_capture_moves.extend(
+                        self.get_capture_moves(*next_position, pawn)
+                    )
+        return possible_capture_moves
+
+    def get_normal_moves(self, row, column, pawn):
+        possible_normal_moves = []
+
+        if pawn == Pawns.BLACK_PAWN:
+            direction = 1
+        elif pawn == Pawns.WHITE_PAWN:
+            direction = -1
+
+        for position in [
+            (row + direction * 1, column - 1),
+            (row + direction * 1, column + 1),
+        ]:
+            if not self.field_exists(*position):
+                continue
+            if not self.check_position(*position):
+                possible_normal_moves.append(position)
+        return possible_normal_moves
+
+    def get_possible_moves(self, row, column):
+        possible_moves = []
+
+        pawn = self.check_position(row, column)
+        if not pawn:
+            return possible_moves
+
+        possible_moves.extend(self.get_normal_moves(row, column, pawn))
+        possible_moves.extend(self.get_capture_moves(row, column, pawn))
+
+        print(possible_moves)
+        return possible_moves
+
+    def highlight_possible_moves(self, screen, square_size, possible_moves):
+        for move in possible_moves:
+            row, column = move
+            square = (
+                column * square_size,
+                row * square_size,
+                square_size,
+                square_size,
+            )
+            pygame.draw.rect(screen, (0, 255, 0), square)
+
     def draw_pawn(self, screen, square_size, row, column, pawn):
         pawn_radius = square_size // 3
         pawn_x = column * square_size + square_size // 2
@@ -47,15 +130,6 @@ class Board:
 
         running = True
         while running:
-            # Handle events
-            for event in pygame.event.get():
-                if event.type == KEYDOWN:
-                    if event.key == K_ESCAPE:
-                        running = False
-
-                elif event.type == QUIT:
-                    running = False
-
             # Draw the board
             for row in range(self.size):
                 color_index = row % 2
@@ -75,5 +149,22 @@ class Board:
 
             for row, column in self.white_pawns:
                 self.draw_pawn(screen, square_size, row, column, Pawns.WHITE_PAWN)
+
+            # Handle events
+            for event in [pygame.event.wait()] + pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = pygame.mouse.get_pos()
+                    column = x // square_size
+                    row = y // square_size
+                    print(row, column)
+                    self.highlight_possible_moves(
+                        screen, square_size, self.get_possible_moves(row, column)
+                    )
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        running = False
+
+                elif event.type == QUIT:
+                    running = False
 
             pygame.display.flip()
