@@ -14,7 +14,8 @@ def main():
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 
     board_size = 8
-    board = Board(board_size)
+    pawns_rows = 2
+    board = Board(board_size, pawns_rows)
     board.draw_board(screen)
 
 

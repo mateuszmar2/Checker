@@ -1,5 +1,6 @@
 import pygame
 from enum import Enum
+import logging
 
 from pygame.locals import (
     K_UP,
@@ -33,37 +34,57 @@ class Board:
     black_pawns = []
     size = 0
 
-    def __init__(self, size):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    def __init__(self, size, pawns_rows=2):
         """
         Initialize the board, set the size and positions of pawns
         """
         self.size = size
+        self.pawns_rows = pawns_rows
+        self.logger.info(
+            f"Initializing board with size: {size} and number of pawn rows: {pawns_rows}"
+        )
 
         for column in range(size):
-            for row in range(2):
+            for row in range(pawns_rows):
                 if (row + column) % 2 == 1:
                     self.black_pawns.append((row, column))
 
-            for row in range(size - 2, size):
+            for row in range(size - pawns_rows, size):
                 if (row + column) % 2 == 1:
                     self.white_pawns.append((row, column))
+
+        self.logger.debug(f"Black pawns positions: {self.black_pawns}")
+        self.logger.debug(f"White pawns positions: {self.white_pawns}")
 
     def field_exists(self, row, column):
         """
         Check if field exists on the board
         """
-        return row >= 0 and row < self.size and column >= 0 and column < self.size
+        exists = row >= 0 and row < self.size and column >= 0 and column < self.size
+        self.logger.debug(f"Position ({row}, {column}) exists: {exists}")
+        return exists
 
     def check_position(self, row, column):
         """
         Check if there is a pawn on the given position and return its type
         """
+        position_pawn = None
         if (row, column) in self.black_pawns:
-            return Pawns.BLACK_PAWN
+            position_pawn = Pawns.BLACK_PAWN
         elif (row, column) in self.white_pawns:
-            return Pawns.WHITE_PAWN
-        else:
-            return None
+            position_pawn = Pawns.WHITE_PAWN
+        self.logger.debug(f"Position ({row}, {column}) pawn: {position_pawn}")
+        return position_pawn
 
     def get_capture_moves(self, row, column, pawn):
         """
@@ -93,6 +114,9 @@ class Board:
                     continue
                 if not self.check_position(*next_position):
                     possible_capture_moves.append(next_position)
+                    self.logger.debug(
+                        f"Possible capture move from position ({row}, {column}): ({next_position[0]}, {next_position[1]}))"
+                    )
                     possible_capture_moves.extend(
                         self.get_capture_moves(*next_position, pawn)
                     )
@@ -117,6 +141,9 @@ class Board:
                 continue
             if not self.check_position(*position):
                 possible_normal_moves.append(position)
+                self.logger.debug(
+                    f"Possible normal move from position ({row}, {column}): ({position[0]}, {position[1]}))"
+                )
         return possible_normal_moves
 
     def get_possible_moves(self, row, column):
@@ -132,7 +159,6 @@ class Board:
         possible_moves.extend(self.get_normal_moves(row, column, pawn))
         possible_moves.extend(self.get_capture_moves(row, column, pawn))
 
-        print(possible_moves)
         return possible_moves
 
     def highlight_possible_moves(self, screen, square_size, possible_moves):
@@ -194,7 +220,7 @@ class Board:
                     x, y = pygame.mouse.get_pos()
                     column = x // square_size
                     row = y // square_size
-                    print(row, column)
+                    self.logger.debug(f"Clicked position: ({row}, {column})")
                     self.highlight_possible_moves(
                         screen, square_size, self.get_possible_moves(row, column)
                     )
