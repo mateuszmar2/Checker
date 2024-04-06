@@ -15,8 +15,8 @@ def main():
 
     board_size = 8
     pawns_rows = 2
-    board = Board(board_size, pawns_rows)
-    board.draw_board(screen)
+    board = Board(screen, board_size, pawns_rows)
+    board.draw_board()
 
 
 if __name__ == "__main__":
