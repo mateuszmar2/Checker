@@ -13,16 +13,30 @@ from pygame.locals import (
 
 
 class Pawns(Enum):
+    """
+    Enum class for pawns
+    Each pawn has an index and a color
+    """
+
     BLACK_PAWN = {"index": 1, "color": (0, 0, 0)}
     WHITE_PAWN = {"index": 2, "color": (255, 255, 255)}
 
 
 class Board:
+    """
+    Class representing the board
+    Board has adjustable size
+    It contains list of positions for each type of pawns
+    """
+
     white_pawns = []
     black_pawns = []
     size = 0
 
     def __init__(self, size):
+        """
+        Initialize the board, set the size and positions of pawns
+        """
         self.size = size
 
         for column in range(size):
@@ -35,9 +49,15 @@ class Board:
                     self.white_pawns.append((row, column))
 
     def field_exists(self, row, column):
+        """
+        Check if field exists on the board
+        """
         return row >= 0 and row < self.size and column >= 0 and column < self.size
 
     def check_position(self, row, column):
+        """
+        Check if there is a pawn on the given position and return its type
+        """
         if (row, column) in self.black_pawns:
             return Pawns.BLACK_PAWN
         elif (row, column) in self.white_pawns:
@@ -46,6 +66,9 @@ class Board:
             return None
 
     def get_capture_moves(self, row, column, pawn):
+        """
+        Get possible capture moves for the pawn on the given position
+        """
         possible_capture_moves = []
 
         if pawn == Pawns.BLACK_PAWN:
@@ -76,6 +99,9 @@ class Board:
         return possible_capture_moves
 
     def get_normal_moves(self, row, column, pawn):
+        """
+        Get possible normal moves for the pawn on the given position
+        """
         possible_normal_moves = []
 
         if pawn == Pawns.BLACK_PAWN:
@@ -94,6 +120,9 @@ class Board:
         return possible_normal_moves
 
     def get_possible_moves(self, row, column):
+        """
+        Get possible capture and normal moves for the pawn on the given position
+        """
         possible_moves = []
 
         pawn = self.check_position(row, column)
@@ -107,6 +136,9 @@ class Board:
         return possible_moves
 
     def highlight_possible_moves(self, screen, square_size, possible_moves):
+        """
+        Highlight possible moves on the board
+        """
         for move in possible_moves:
             row, column = move
             square = (
@@ -118,12 +150,18 @@ class Board:
             pygame.draw.rect(screen, (0, 255, 0), square)
 
     def draw_pawn(self, screen, square_size, row, column, pawn):
+        """
+        Draw a pawn on the board
+        """
         pawn_radius = square_size // 3
         pawn_x = column * square_size + square_size // 2
         pawn_y = row * square_size + square_size // 2
         pygame.draw.circle(screen, pawn.value["color"], (pawn_x, pawn_y), pawn_radius)
 
     def draw_board(self, screen):
+        """
+        Main drawing function
+        """
         BACKGROUND_COLORS = [(230, 210, 170), (170, 120, 90)]
         screen_size = screen.get_width()
         square_size = screen_size // self.size

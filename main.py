@@ -6,6 +6,9 @@ SCREEN_SIZE = 800
 
 
 def main():
+    """
+    Main function of the game
+    """
     pygame.init()
     pygame.display.set_caption("Warcaby")
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
