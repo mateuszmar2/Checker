@@ -42,9 +42,9 @@ class Board:
     black_pawns = []
 
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
@@ -127,17 +127,15 @@ class Board:
                 if not self.field_exists(*next_position):
                     continue
                 if not self.check_position(*next_position):
-                    move = {}
-                    move["path"] = path
-                    move["path"].append((row, column))
-                    move["path"].append(neighbour_position)
-                    move["path"].append(next_position)
-                    move["start"] = move["path"][0]
-                    move["destination"] = move["path"][-1]
+                    move = path
+                    move.append((row, column))
+                    move.append(neighbour_position)
+                    move.append(next_position)
                     possible_capture_moves.append(move)
-                    self.logger.debug(f"Possible capture move path: {move['path']}")
+                    self.logger.debug(f"Possible capture move path: {move}")
+                    # Pass new list to avoid modifying the original path
                     possible_capture_moves.extend(
-                        self.get_capture_moves(*next_position, pawn, path=move["path"])
+                        self.get_capture_moves(*next_position, pawn, path=move[:])
                     )
         return possible_capture_moves
 
@@ -159,13 +157,9 @@ class Board:
             if not self.field_exists(*next_position):
                 continue
             if not self.check_position(*next_position):
-                move = {}
-                move["path"] = [(row, column), next_position]
-                move["start"] = move["path"][0]
-                move["destination"] = move["path"][-1]
-
+                move = [(row, column), next_position]
                 possible_normal_moves.append(move)
-                self.logger.debug(f"Possible normal move path: {move['path']}")
+                self.logger.debug(f"Possible normal move path: {move}")
         return possible_normal_moves
 
     def get_possible_moves(self, row, column):
@@ -228,12 +222,12 @@ class Board:
             return move_made
 
         for move in possible_moves:
-            if (next_row, next_column) != move["destination"]:
+            if (next_row, next_column) != move[-1]:
                 continue
 
             move_made = True
             # Clear all pawns on the path
-            for path_position in move["path"][1:]:
+            for path_position in move[1:]:
                 if path_position in self.black_pawns:
                     self.black_pawns.remove(path_position)
                     self.logger.info(f"Black pawn removed from: {path_position}!")
@@ -249,7 +243,7 @@ class Board:
                 self.white_pawns.remove((row, column))
                 self.white_pawns.append((next_row, next_column))
 
-            self.logger.info(f"Move made: {move['start']} -> {move['destination']}")
+            self.logger.info(f"Move made: {move[0]} -> {move[-1]}")
 
         return move_made
 
@@ -300,7 +294,7 @@ class Board:
                     highligh_squares = []
                     possible_moves = self.get_possible_moves(*current_click)
                     for move in possible_moves:
-                        highligh_squares.append(move["destination"])
+                        highligh_squares.append(move[-1])
 
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
