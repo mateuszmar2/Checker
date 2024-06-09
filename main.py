@@ -1,23 +1,14 @@
-import pygame
-
-from board import Board
-
-SCREEN_SIZE = 800
+from BoardLogic import BoardLogic
 
 
 def main():
     """
     Main function of the game
     """
-    pygame.init()
-    pygame.display.set_caption("Warcaby")
-    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-
+    screen_size = 800
     board_size = 8
     pawns_rows = 2
-    board = Board(screen, board_size, pawns_rows)
-    board.draw_board()
-
+    BoardLogic(screen_size, board_size, pawns_rows)
 
 if __name__ == "__main__":
     main()
