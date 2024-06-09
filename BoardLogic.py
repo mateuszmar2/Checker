@@ -4,7 +4,7 @@ import logging
 from BoardGUI import *
 
 
-class BoardLogic():
+class BoardLogic:
     """
     Class for the logic of the board
     """
@@ -18,8 +18,8 @@ class BoardLogic():
         BLACK_PAWN = {"index": 1, "color": (0, 0, 0)}
         WHITE_PAWN = {"index": 2, "color": (255, 255, 255)}
 
-
     def __init__(self, screen_size, size=8, pawns_rows=2):
+        self.running = False
         self.size = size
         self.pawn_rows = pawns_rows
         self.turn = self.Pawns.WHITE_PAWN
@@ -204,13 +204,22 @@ class BoardLogic():
         """
         if self.all_pawns_lost():
             self.finish_game(winner=self.turn)
+            return
 
-        self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
+        self.turn = (
+            self.Pawns.BLACK_PAWN
+            if self.turn == self.Pawns.WHITE_PAWN
+            else self.Pawns.WHITE_PAWN
+        )
         self.logger.info(f"Turn changed to: {self.turn}")
-        
+
         if not self.has_possible_move():
             self.logger.info(f"No possible moves for {self.turn}!")
-            self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
+            self.turn = (
+                self.Pawns.BLACK_PAWN
+                if self.turn == self.Pawns.WHITE_PAWN
+                else self.Pawns.WHITE_PAWN
+            )
             self.logger.info(f"Turn changed to: {self.turn}")
             if not self.has_possible_move():
                 self.logger.info(f"No possible moves for {self.turn} either!")
@@ -229,11 +238,13 @@ class BoardLogic():
         """
         Check if the current player has any possible move
         """
-        for row, column in self.black_pawns if self.turn == self.Pawns.BLACK_PAWN else self.white_pawns:
+        for row, column in (
+            self.black_pawns if self.turn == self.Pawns.BLACK_PAWN else self.white_pawns
+        ):
             if self.get_possible_moves(row, column):
                 return True
         return False
-    
+
     def all_pawns_lost(self):
         """
         Check if all pawns of one of the players are lost
@@ -241,14 +252,22 @@ class BoardLogic():
         if not self.white_pawns or not self.black_pawns:
             return True
         return False
-    
+
     def finish_game(self, winner):
         """
         Finish the game and show the winner
         """
         self.logger.info("Game over!")
-        if not winner:
-            self.logger.info("It's a draw!")
-        else:
-            self.logger.info(f"The winner is: {winner}")
-        self.GUI.running = False
+        if not winner and len(self.black_pawns) == len(self.white_pawns):
+                self.logger.info(f"Both players have the same number of pawns: {len(self.black_pawns)}")
+                self.logger.info("It's a draw!")
+
+        if len(self.black_pawns) > len(self.white_pawns):
+            self.logger.info(f"Black player has more pawns: {len(self.black_pawns)} > {len(self.white_pawns)}")
+            winner = self.Pawns.BLACK_PAWN
+        elif len(self.black_pawns) < len(self.white_pawns):
+            self.logger.info(f"White player has more pawns: {len(self.white_pawns)} > {len(self.black_pawns)}")
+            winner = self.Pawns.WHITE_PAWN
+
+        self.logger.info(f"The winner is: {winner}")
+        self.running = False

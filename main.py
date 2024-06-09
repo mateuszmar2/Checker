@@ -10,5 +10,6 @@ def main():
     pawns_rows = 2
     BoardLogic(screen_size, board_size, pawns_rows)
 
+
 if __name__ == "__main__":
     main()

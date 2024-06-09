@@ -6,10 +6,12 @@ from pygame.locals import (
     QUIT,
 )
 
+
 class BoardGUI:
     """
     Class for the graphical representation of the board
     """
+
     BACKGROUND_COLORS = [(230, 210, 170), (170, 120, 90)]
 
     def __init__(self, board_logic, screen):
@@ -33,7 +35,6 @@ class BoardGUI:
         self.screen = screen
         self.screen_size = screen.get_width()
         self.square_size = self.screen_size // self.board_logic.size
-        self.running = False
 
         self.logger.info(f"Initializing board with attributes:")
         self.logger.info(f"Board size: {self.board_logic.size}")
@@ -43,7 +44,6 @@ class BoardGUI:
 
         self.draw_board()
 
-
     def draw_board(self):
         """
         Main drawing function
@@ -51,8 +51,8 @@ class BoardGUI:
         highligh_squares = []
         previous_click = None
         current_click = None
-        self.running = True
-        while self.running:
+        self.board_logic.running = True
+        while self.board_logic.running:
             # Draw the board
             for row in range(self.board_logic.size):
                 color_index = row % 2
@@ -95,10 +95,10 @@ class BoardGUI:
 
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
-                        self.running = False
+                        self.board_logic.running = False
 
                 elif event.type == QUIT:
-                    self.running = False
+                    self.board_logic.running = False
 
             # Highlight possible moves
             self.highlight_possible_moves(highligh_squares)
