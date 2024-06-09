@@ -22,6 +22,7 @@ class BoardLogic():
     def __init__(self, screen_size, size=8, pawns_rows=2):
         self.size = size
         self.pawn_rows = pawns_rows
+        self.turn = self.Pawns.WHITE_PAWN
 
         # Initialize logger
         logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class BoardLogic():
         pygame.display.set_caption("Warcaby")
         screen = pygame.display.set_mode((screen_size, screen_size))
         self.GUI = BoardGUI(self, screen)
-        
+
     def field_exists(self, row, column):
         """
         Check if field exists on the board
@@ -104,7 +105,7 @@ class BoardLogic():
                 if not self.field_exists(*next_position):
                     continue
                 if not self.check_position(*next_position):
-                    move = path
+                    move = path.copy()
                     move.append((row, column))
                     move.append(neighbour_position)
                     move.append(next_position)
@@ -148,6 +149,8 @@ class BoardLogic():
         pawn = self.check_position(row, column)
         if not pawn:
             return possible_moves
+        elif not self.is_pawn_turn(pawn):
+            return possible_moves
 
         possible_moves.extend(self.get_capture_moves(row, column, pawn, []))
         possible_moves.extend(self.get_normal_moves(row, column, pawn))
@@ -161,6 +164,8 @@ class BoardLogic():
         move_made = False
         pawn = self.check_position(row, column)
         if not pawn:
+            return move_made
+        elif not self.is_pawn_turn(pawn):
             return move_made
 
         for move in possible_moves:
@@ -187,4 +192,41 @@ class BoardLogic():
 
             self.logger.info(f"Move made: {move[0]} -> {move[-1]}")
 
+            # Change the turn
+            self.change_turn()
+            break
+
         return move_made
+
+    def change_turn(self):
+        """
+        Change the turn
+        """
+        self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
+        self.logger.info(f"Turn changed to: {self.turn}")
+        if not self.has_possible_move():
+            self.logger.info(f"No possible moves for {self.turn}!")
+            self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
+            self.logger.info(f"Turn changed to: {self.turn}")
+            if not self.has_possible_move():
+                self.logger.info(f"No possible moves for {self.turn}!")
+                self.logger.info("Game over!")
+                pygame.quit()
+
+    def is_pawn_turn(self, pawn):
+        """
+        Check if it is the turn of the given pawn
+        """
+        if self.turn != pawn:
+            self.logger.info(f"It is not {pawn} turn!")
+            return False
+        return True
+
+    def has_possible_move(self):
+        """
+        Check if the current player has any possible move
+        """
+        for row, column in self.black_pawns if self.turn == self.Pawns.BLACK_PAWN else self.white_pawns:
+            if self.get_possible_moves(row, column):
+                return True
+        return False
