@@ -202,16 +202,19 @@ class BoardLogic():
         """
         Change the turn
         """
+        if self.all_pawns_lost():
+            self.finish_game(winner=self.turn)
+
         self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
         self.logger.info(f"Turn changed to: {self.turn}")
+        
         if not self.has_possible_move():
             self.logger.info(f"No possible moves for {self.turn}!")
             self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
             self.logger.info(f"Turn changed to: {self.turn}")
             if not self.has_possible_move():
-                self.logger.info(f"No possible moves for {self.turn}!")
-                self.logger.info("Game over!")
-                pygame.quit()
+                self.logger.info(f"No possible moves for {self.turn} either!")
+                self.finish_game(winner=None)
 
     def is_pawn_turn(self, pawn):
         """
@@ -230,3 +233,22 @@ class BoardLogic():
             if self.get_possible_moves(row, column):
                 return True
         return False
+    
+    def all_pawns_lost(self):
+        """
+        Check if all pawns of one of the players are lost
+        """
+        if not self.white_pawns or not self.black_pawns:
+            return True
+        return False
+    
+    def finish_game(self, winner):
+        """
+        Finish the game and show the winner
+        """
+        self.logger.info("Game over!")
+        if not winner:
+            self.logger.info("It's a draw!")
+        else:
+            self.logger.info(f"The winner is: {winner}")
+        self.GUI.running = False

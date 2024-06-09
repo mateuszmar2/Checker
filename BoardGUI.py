@@ -33,6 +33,7 @@ class BoardGUI:
         self.screen = screen
         self.screen_size = screen.get_width()
         self.square_size = self.screen_size // self.board_logic.size
+        self.running = False
 
         self.logger.info(f"Initializing board with attributes:")
         self.logger.info(f"Board size: {self.board_logic.size}")
@@ -50,8 +51,8 @@ class BoardGUI:
         highligh_squares = []
         previous_click = None
         current_click = None
-        running = True
-        while running:
+        self.running = True
+        while self.running:
             # Draw the board
             for row in range(self.board_logic.size):
                 color_index = row % 2
@@ -94,10 +95,10 @@ class BoardGUI:
 
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
-                        running = False
+                        self.running = False
 
                 elif event.type == QUIT:
-                    running = False
+                    self.running = False
 
             # Highlight possible moves
             self.highlight_possible_moves(highligh_squares)
