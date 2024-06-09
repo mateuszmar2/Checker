@@ -73,6 +73,12 @@ class BoardGUI:
             for row, column in self.board_logic.white_pawns:
                 self.draw_pawn(row, column, self.board_logic.Pawns.WHITE_PAWN)
 
+
+            if self.board_logic.turn == self.board_logic.Pawns.BLACK_PAWN:
+                self.logger.debug("AI's turn")
+                self.board_logic.random_move()
+                continue
+
             # Handle events
             for event in [pygame.event.wait()] + pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:

@@ -2,6 +2,7 @@ import pygame
 from enum import Enum
 import logging
 from BoardGUI import *
+import random
 
 
 class BoardLogic:
@@ -271,3 +272,19 @@ class BoardLogic:
 
         self.logger.info(f"The winner is: {winner}")
         self.running = False
+
+    def get_all_pawns(self, pawn_type):
+        return self.black_pawns if pawn_type == self.Pawns.BLACK_PAWN else self.white_pawns
+
+    def random_move(self):
+        pawns = self.get_all_pawns(self.Pawns.BLACK_PAWN)
+        random.shuffle(pawns)
+
+        for row, column in pawns:
+            moves = self.get_possible_moves(row, column)
+            if moves:
+                random_move = random.choice(moves)
+                self.make_move(random_move[0][0], random_move[0][1], random_move[-1][0], random_move[-1][1], moves)
+                return
+        self.logger.debug("AI could not find a valid move.")
+>>>>>>> be07d85 (Implementation of a simple bot that moves randomly)
