@@ -3,6 +3,7 @@ from enum import Enum
 import logging
 from BoardGUI import *
 import random
+import hashlib
 
 
 class BoardLogic:
@@ -24,6 +25,7 @@ class BoardLogic:
         self.size = size
         self.pawn_rows = pawns_rows
         self.turn = self.Pawns.WHITE_PAWN
+        self.transposition_table = {}
 
         # Initialize logger
         logger = logging.getLogger(__name__)
@@ -365,12 +367,18 @@ class BoardLogic:
 
         return black_score - white_score
 
-
+    def get_board_hash(self):
+        board_state = (tuple(sorted(self.black_pawns)), tuple(sorted(self.white_pawns)), self.turn)
+        return hashlib.sha1(str(board_state).encode()).hexdigest()
 
     def minimax(self, depth, alpha, beta, maximizing_player):
         """
         Minimax algorithm with alpha-beta pruning.
         """
+        board_hash = self.get_board_hash()
+        if board_hash in self.transposition_table:
+            return self.transposition_table[board_hash]
+
         self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
         if depth == 0 or not self.ai_has_possible_move():
             score = self.evaluate_board()
@@ -395,7 +403,8 @@ class BoardLogic:
                     alpha = max(alpha, eval)
                     if beta <= alpha:
                         break
-            self.logger.debug(f"AI best move: {best_move} with evaluation: {max_eval}")
+            self.transposition_table[board_hash] = (max_eval, best_move)
+            self.logger.debug(f"[AI][max] best move: {best_move} with evaluation: {max_eval}")
             return max_eval, best_move
         else:
             self.logger.debug(f"[AI] minimizing")
@@ -415,6 +424,8 @@ class BoardLogic:
                     beta = min(beta, eval)
                     if beta <= alpha:
                         break
+            self.transposition_table[board_hash] = (min_eval, best_move)
+            self.logger.debug(f"[AI][min] best move: {best_move} with evaluation: {min_eval}")
             return min_eval, best_move
 
     def apply_move(self, move, pawn):

@@ -77,7 +77,8 @@ class BoardGUI:
             if self.board_logic.turn == self.board_logic.Pawns.BLACK_PAWN:
                 self.logger.debug("AI's turn")
                 #self.board_logic.random_move()
-                self.board_logic.ai_move(depth=2)
+                pygame.display.flip()
+                self.board_logic.ai_move(depth=5)
                 continue
 
             # Handle events
