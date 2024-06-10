@@ -295,7 +295,7 @@ class BoardLogic():
             white_score += (self.size - 1 - row)  # Bonus for advancing pawns
 
         # Center control
-        center_positions = [(3, 3), (3, 4), (4, 3), (4, 4)]
+        center_positions = self.get_center_positions()
         for row, column in self.black_pawns:
             if (row, column) in center_positions:
                 black_score += 5
@@ -305,8 +305,8 @@ class BoardLogic():
                 white_score += 5
 
         # Mobility
-        black_moves = sum(len(self.get_possible_moves(row, column)) for row, column in self.black_pawns)
-        white_moves = sum(len(self.get_possible_moves(row, column)) for row, column in self.white_pawns)
+        black_moves = sum(len(self.ai_get_possible_moves(row, column)) for row, column in self.black_pawns)
+        white_moves = sum(len(self.ai_get_possible_moves(row, column)) for row, column in self.white_pawns)
         black_score += black_moves
         white_score += white_moves
 
@@ -334,15 +334,16 @@ class BoardLogic():
         if depth == 0 or not self.ai_has_possible_move():
             score = self.evaluate_board()
             self.logger.debug(f"[AI] Minimax evaluation at depth 0: {score}")
+            self.transposition_table[board_hash] = (score, None)
             return score, None
 
         if maximizing_player:
             self.logger.debug(f"[AI] maximizing")
             max_eval = float('-inf')
             best_move = None
-            for row, column in self.black_pawns:
+            for row, column in sorted(self.black_pawns):
                 self.logger.debug(f"[AI][max] black pawn {row, column}")
-                for move in self.ai_get_possible_moves(row, column):
+                for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: -self.evaluate_move(m)):
                     self.logger.debug(f"[AI][max] considering move {move}")
                     captures = self.apply_move(move, self.Pawns.BLACK_PAWN)
                     eval, _ = self.minimax(depth - 1, alpha, beta, False)
@@ -361,9 +362,9 @@ class BoardLogic():
             self.logger.debug(f"[AI] minimizing")
             min_eval = float('inf')
             best_move = None
-            for row, column in self.white_pawns:
+            for row, column in sorted(self.white_pawns):
                 self.logger.debug(f"[AI][min] white pawn {row, column}")
-                for move in self.ai_get_possible_moves(row, column):
+                for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: self.evaluate_move(m)):
                     self.logger.debug(f"[AI][min] considering move {move}")
                     captures = self.apply_move(move, self.Pawns.WHITE_PAWN)
                     eval, _ = self.minimax(depth - 1, alpha, beta, True)
@@ -427,6 +428,43 @@ class BoardLogic():
                 self.black_pawns.append(capture)
             elif captured_pawn == self.Pawns.WHITE_PAWN:
                 self.white_pawns.append(capture)
+
+
+    def evaluate_move(self, move):
+        """
+        Evaluate a move based on its position and potential captures.
+        """
+        start, end = move[0], move[-1]
+        score = 0
+
+        # Calculate dynamic center positions
+        center_positions = self.get_center_positions()
+
+        # Assign higher score for moves ending in center positions
+        if end in center_positions:
+            score += 5  # Center positions are more valuable
+
+        # Assign score for the length of the move (captures are more valuable)
+        score += len(move) - 1  # Longer moves (captures) are more valuable
+
+        return score
+
+
+    def get_center_positions(self):
+        """
+        Determine the center positions of the board dynamically based on the board size.
+        """
+        center_positions = []
+        center = self.size // 2
+
+        # Define the size of the central region as a fraction of the board size
+        central_region_size = max(2, self.size // 4)
+
+        for row in range(center - central_region_size // 2, center + (central_region_size + 1) // 2):
+            for col in range(center - central_region_size // 2, center + (central_region_size + 1) // 2):
+                center_positions.append((row, col))
+
+        return center_positions
 
 
     def ai_move(self, depth=3):
