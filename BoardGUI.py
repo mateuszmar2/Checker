@@ -73,6 +73,12 @@ class BoardGUI:
             for row, column in self.board_logic.white_pawns:
                 self.draw_pawn(row, column, self.board_logic.Pawns.WHITE_PAWN)
 
+            for row, column in self.board_logic.black_queens:
+                self.draw_pawn(row, column, self.board_logic.Pawns.BLACK_QUEEN)
+
+            for row, column in self.board_logic.white_queens:
+                self.draw_pawn(row, column, self.board_logic.Pawns.WHITE_QUEEN)
+
             # Handle events
             for event in [pygame.event.wait()] + pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -129,6 +135,18 @@ class BoardGUI:
         pygame.draw.circle(
             self.screen, pawn.value["color"], (pawn_x, pawn_y), pawn_radius
         )
+        if pawn.value["type"] == "queen":
+            # draw pawn with 'Q' letter in the middle
+            font = pygame.font.Font(None, 60)
+            pawn_color = pawn.value["color"]
+            # invert the color of the pawn to make the text readable
+            text = font.render(
+                "Q",
+                True,
+                (255 - pawn_color[0], 255 - pawn_color[1], 255 - pawn_color[2]),
+            )
+            text_rect = text.get_rect(center=(pawn_x, pawn_y))
+            self.screen.blit(text, text_rect)
 
     def get_mouse_click_position(self):
         """

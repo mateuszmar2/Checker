@@ -15,14 +15,31 @@ class BoardLogic:
         Each pawn has an index and a color
         """
 
-        BLACK_PAWN = {"index": 1, "color": (0, 0, 0)}
-        WHITE_PAWN = {"index": 2, "color": (255, 255, 255)}
+        BLACK_PAWN = {"index": 1, "color": (0, 0, 0), "player": "black", "type": "pawn"}
+        WHITE_PAWN = {
+            "index": 2,
+            "color": (255, 255, 255),
+            "player": "white",
+            "type": "pawn",
+        }
+        BLACK_QUEEN = {
+            "index": 3,
+            "color": (0, 0, 0),
+            "player": "black",
+            "type": "queen",
+        }
+        WHITE_QUEEN = {
+            "index": 4,
+            "color": (255, 255, 255),
+            "player": "white",
+            "type": "queen",
+        }
 
     def __init__(self, screen_size, size=8, pawns_rows=2):
         self.running = False
         self.size = size
         self.pawn_rows = pawns_rows
-        self.turn = self.Pawns.WHITE_PAWN
+        self.turn = self.Pawns.WHITE_PAWN.value["player"]
 
         # Initialize logger
         logger = logging.getLogger(__name__)
@@ -39,6 +56,8 @@ class BoardLogic:
         # Initialize pawn positions
         self.white_pawns = []
         self.black_pawns = []
+        self.white_queens = []
+        self.black_queens = []
 
         for column in range(self.size):
             for row in range(pawns_rows):
@@ -75,8 +94,109 @@ class BoardLogic:
             position_pawn = self.Pawns.BLACK_PAWN
         elif (row, column) in self.white_pawns:
             position_pawn = self.Pawns.WHITE_PAWN
+        elif (row, column) in self.black_queens:
+            position_pawn = self.Pawns.BLACK_QUEEN
+        elif (row, column) in self.white_queens:
+            position_pawn = self.Pawns.WHITE_QUEEN
         self.logger.debug(f"Position ({row}, {column}) pawn: {position_pawn}")
         return position_pawn
+
+    def get_queen_moves(self, row, column, pawn, previous_position=None):
+        """
+        Get possible moves for the queen on the given position
+        """
+        possible_normal_moves = []
+        possible_capture_moves = []
+
+        for direction in [
+            (1, -1),
+            (1, 1),
+            (-1, -1),
+            (-1, 1),
+        ]:
+            next_position = (row + direction[0], column + direction[1])
+            while self.field_exists(*next_position) and not self.check_position(
+                *next_position
+            ):
+                move = [(row, column), next_position]
+                possible_normal_moves.append(move)
+                self.logger.debug(f"Possible normal move path: {move}")
+                next_position = (
+                    next_position[0] + direction[0],
+                    next_position[1] + direction[1],
+                )
+
+            if self.field_exists(*next_position):
+                in_capture_position = self.check_position(*next_position)
+                capture_position = next_position
+                if (
+                    in_capture_position
+                    and in_capture_position.value["player"] != pawn.value["player"]
+                ):
+                    if capture_position[1] < column:
+                        next_column = capture_position[1] - 1
+                    elif capture_position[1] > column:
+                        next_column = capture_position[1] + 1
+                    next_position = (capture_position[0] + direction[0], next_column)
+                    if not self.field_exists(*next_position):
+                        continue
+                    if not self.check_position(*next_position):
+                        move = [(row, column), capture_position, next_position]
+                        possible_capture_moves.append(move)
+                        self.logger.debug(f"Possible capture move path: {move}")
+                        possible_capture_moves.extend(
+                            self.get_queen_capture_moves(move, pawn)
+                        )
+
+        return possible_normal_moves, possible_capture_moves
+
+    def get_queen_capture_moves(self, path, pawn):
+        """
+        Get possible capture moves for the queen on the given position from the given path
+        """
+
+        possible_capture_moves = []
+
+        directions = [
+            (1, -1),
+            (1, 1),
+            (-1, -1),
+            (-1, 1),
+        ]
+        if path:
+            current_position = path[-1]
+
+        for direction in directions:
+            capture_position = (
+                current_position[0] + direction[0],
+                current_position[1] + direction[1],
+            )
+            if capture_position in path:
+                self.logger.debug(
+                    f"Capture position {capture_position} already in path, skipping"
+                )
+                continue
+            next_position = (
+                capture_position[0] + direction[0],
+                capture_position[1] + direction[1],
+            )
+            if not self.field_exists(*capture_position) or self.check_position(
+                *next_position
+            ):
+                continue
+            on_capture_position = self.check_position(*capture_position)
+            on_next_position = self.check_position(*next_position)
+            if not on_capture_position or on_next_position:
+                continue
+            if on_capture_position.value["player"] != pawn.value["player"]:
+                move = path.copy()
+                move.append(capture_position)
+                move.append(next_position)
+                possible_capture_moves.append(move)
+                self.logger.debug(f"Possible capture move path: {move}")
+                possible_capture_moves.extend(self.get_queen_capture_moves(move, pawn))
+
+        return possible_capture_moves
 
     def get_capture_moves(self, row, column, pawn, path):
         """
@@ -96,7 +216,10 @@ class BoardLogic:
             if not self.field_exists(*neighbour_position):
                 continue
             in_neighbour_position = self.check_position(*neighbour_position)
-            if in_neighbour_position and in_neighbour_position != pawn:
+            if (
+                in_neighbour_position
+                and in_neighbour_position.value["player"] != pawn.value["player"]
+            ):
                 if neighbour_position[1] < column:
                     next_column = neighbour_position[1] - 1
                 elif neighbour_position[1] > column:
@@ -152,8 +275,15 @@ class BoardLogic:
         elif not self.is_pawn_turn(pawn):
             return possible_moves
 
-        possible_moves.extend(self.get_capture_moves(row, column, pawn, []))
-        possible_moves.extend(self.get_normal_moves(row, column, pawn))
+        if pawn.value["type"] == "queen":
+            normal_queen_moves, capture_queen_moves = self.get_queen_moves(
+                row, column, pawn
+            )
+            possible_moves.extend(normal_queen_moves)
+            possible_moves.extend(capture_queen_moves)
+        else:
+            possible_moves.extend(self.get_capture_moves(row, column, pawn, []))
+            possible_moves.extend(self.get_normal_moves(row, column, pawn))
 
         return possible_moves
 
@@ -175,12 +305,32 @@ class BoardLogic:
             move_made = True
             # Clear all pawns on the path
             for path_position in move[1:]:
-                if path_position in self.black_pawns:
-                    self.black_pawns.remove(path_position)
-                    self.logger.info(f"Black pawn removed from: {path_position}!")
-                elif path_position in self.white_pawns:
-                    self.white_pawns.remove(path_position)
-                    self.logger.info(f"White pawn removed from: {path_position}!")
+                pawn_on_path = self.check_position(*path_position)
+                if pawn_on_path:
+                    player = pawn_on_path.value["player"]
+                    pawn_type = pawn_on_path.value["type"]
+                    if player == "black":
+                        if pawn_type == "pawn":
+                            self.black_pawns.remove(path_position)
+                            self.logger.info(
+                                f"Black pawn removed from: {path_position}!"
+                            )
+                        elif pawn_type == "queen":
+                            self.black_queens.remove(path_position)
+                            self.logger.info(
+                                f"Black queen removed from: {path_position}!"
+                            )
+                    elif player == "white":
+                        if pawn_type == "pawn":
+                            self.white_pawns.remove(path_position)
+                            self.logger.info(
+                                f"White pawn removed from: {path_position}!"
+                            )
+                        elif pawn_type == "queen":
+                            self.white_queens.remove(path_position)
+                            self.logger.info(
+                                f"White queen removed from: {path_position}!"
+                            )
 
             # Remove the pawn from the start position and add it to the destination position
             if pawn == self.Pawns.BLACK_PAWN:
@@ -189,14 +339,39 @@ class BoardLogic:
             elif pawn == self.Pawns.WHITE_PAWN:
                 self.white_pawns.remove((row, column))
                 self.white_pawns.append((next_row, next_column))
+            elif pawn == self.Pawns.BLACK_QUEEN:
+                self.black_queens.remove((row, column))
+                self.black_queens.append((next_row, next_column))
+            elif pawn == self.Pawns.WHITE_QUEEN:
+                self.white_queens.remove((row, column))
+                self.white_queens.append((next_row, next_column))
 
             self.logger.info(f"Move made: {move[0]} -> {move[-1]}")
+
+            if move[-1][0] == 0 or move[-1][0] == self.size - 1:
+                self.make_queen(move[-1])
 
             # Change the turn
             self.change_turn()
             break
 
         return move_made
+
+    def make_queen(self, position):
+        """
+        Make a queen from the pawn on the given position
+        """
+        pawn = self.check_position(*position)
+        if not pawn:
+            return
+        if pawn == self.Pawns.BLACK_PAWN:
+            self.black_pawns.remove(position)
+            self.black_queens.append(position)
+            self.logger.info(f"Black pawn promoted to queen: {position}")
+        elif pawn == self.Pawns.WHITE_PAWN:
+            self.white_pawns.remove(position)
+            self.white_queens.append(position)
+            self.logger.info(f"White pawn promoted to queen: {position}")
 
     def change_turn(self):
         """
@@ -207,18 +382,18 @@ class BoardLogic:
             return
 
         self.turn = (
-            self.Pawns.BLACK_PAWN
-            if self.turn == self.Pawns.WHITE_PAWN
-            else self.Pawns.WHITE_PAWN
+            self.Pawns.BLACK_PAWN.value["player"]
+            if self.turn == self.Pawns.WHITE_PAWN.value["player"]
+            else self.Pawns.WHITE_PAWN.value["player"]
         )
         self.logger.info(f"Turn changed to: {self.turn}")
 
         if not self.has_possible_move():
             self.logger.info(f"No possible moves for {self.turn}!")
             self.turn = (
-                self.Pawns.BLACK_PAWN
-                if self.turn == self.Pawns.WHITE_PAWN
-                else self.Pawns.WHITE_PAWN
+                self.Pawns.BLACK_PAWN.value["player"]
+                if self.turn == self.Pawns.WHITE_PAWN.value["player"]
+                else self.Pawns.WHITE_PAWN.value["player"]
             )
             self.logger.info(f"Turn changed to: {self.turn}")
             if not self.has_possible_move():
@@ -229,18 +404,30 @@ class BoardLogic:
         """
         Check if it is the turn of the given pawn
         """
-        if self.turn != pawn:
+        if self.turn != pawn.value["player"]:
             self.logger.info(f"It is not {pawn} turn!")
             return False
         return True
+
+    def get_all_pawns(self, player):
+        """
+        Get all pawns of the given player
+        """
+        if player == "white":
+            return self.white_pawns + self.white_queens
+        else:
+            return self.black_pawns + self.black_queens
 
     def has_possible_move(self):
         """
         Check if the current player has any possible move
         """
-        for row, column in (
-            self.black_pawns if self.turn == self.Pawns.BLACK_PAWN else self.white_pawns
-        ):
+        if self.turn == "white":
+            pawns = self.get_all_pawns("white")
+        else:
+            pawns = self.get_all_pawns("black")
+
+        for row, column in pawns:
             if self.get_possible_moves(row, column):
                 return True
         return False
@@ -249,7 +436,7 @@ class BoardLogic:
         """
         Check if all pawns of one of the players are lost
         """
-        if not self.white_pawns or not self.black_pawns:
+        if not self.get_all_pawns("white") or not self.get_all_pawns("black"):
             return True
         return False
 
@@ -257,17 +444,25 @@ class BoardLogic:
         """
         Finish the game and show the winner
         """
+        white_pawns_count = len(self.get_all_pawns("white"))
+        black_pawns_count = len(self.get_all_pawns("black"))
         self.logger.info("Game over!")
-        if not winner and len(self.black_pawns) == len(self.white_pawns):
-                self.logger.info(f"Both players have the same number of pawns: {len(self.black_pawns)}")
-                self.logger.info("It's a draw!")
+        if not winner and white_pawns_count == black_pawns_count:
+            self.logger.info(
+                f"Both players have the same number of pawns: {white_pawns_count} = {black_pawns_count}"
+            )
+            self.logger.info("It's a draw!")
 
-        if len(self.black_pawns) > len(self.white_pawns):
-            self.logger.info(f"Black player has more pawns: {len(self.black_pawns)} > {len(self.white_pawns)}")
-            winner = self.Pawns.BLACK_PAWN
-        elif len(self.black_pawns) < len(self.white_pawns):
-            self.logger.info(f"White player has more pawns: {len(self.white_pawns)} > {len(self.black_pawns)}")
-            winner = self.Pawns.WHITE_PAWN
+        if black_pawns_count > white_pawns_count:
+            self.logger.info(
+                f"Black player has more pawns: {black_pawns_count} > {white_pawns_count}"
+            )
+            winner = self.Pawns.BLACK_PAWN.value["player"]
+        elif white_pawns_count > black_pawns_count:
+            self.logger.info(
+                f"White player has more pawns: {white_pawns_count} > {black_pawns_count}"
+            )
+            winner = self.Pawns.WHITE_PAWN.value["player"]
 
         self.logger.info(f"The winner is: {winner}")
         self.running = False
