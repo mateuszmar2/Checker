@@ -365,15 +365,17 @@ class BoardLogic:
         """
         Minimax algorithm with alpha-beta pruning.
         """
+        self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
+
         board_hash = self.get_board_hash()
         if board_hash in self.transposition_table:
             return self.transposition_table[board_hash]
 
-        self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
+        self.logger.debug(f"[AI] No entry in hashmap, calculating moves")
         if depth == 0 or not self.ai_has_possible_move():
             score = self.evaluate_board()
             self.logger.debug(f"[AI] Minimax evaluation at depth 0: {score}")
-            self.transposition_table[board_hash] = (score, None)
+            #self.transposition_table[board_hash] = (score, None)
             return score, None
 
         if maximizing_player:
@@ -517,3 +519,4 @@ class BoardLogic:
             self.logger.debug(f"AI made move: {best_move}")
         else:
             self.logger.debug("AI could not find a valid move.")
+            self.change_turn()
