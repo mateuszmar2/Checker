@@ -268,8 +268,15 @@ class BoardLogic:
         if not pawn:
             return possible_moves
 
-        possible_moves.extend(self.get_capture_moves(row, column, pawn, []))
-        possible_moves.extend(self.get_normal_moves(row, column, pawn))
+        if pawn.value["type"] == "queen":
+            normal_queen_moves, capture_queen_moves = self.get_queen_moves(
+                row, column, pawn
+            )
+            possible_moves.extend(normal_queen_moves)
+            possible_moves.extend(capture_queen_moves)
+        else:
+            possible_moves.extend(self.get_capture_moves(pawn, path=[(row, column)]))
+            possible_moves.extend(self.get_normal_moves(row, column, pawn))
 
         self.logger.debug(f"[AI] Possible moves: {possible_moves}")
         return possible_moves
@@ -459,13 +466,10 @@ class BoardLogic:
         """
         Check if the AI has any possible move
         """
-        for row, column in self.black_pawns if self.turn == self.Pawns.BLACK_PAWN else self.white_pawns:
+        for row, column in self.black_pawns if self.turn == "black" else self.white_pawns:
             if self.ai_get_possible_moves(row, column):
                 return True
         return False
-
-    def get_all_pawns(self, pawn_type):
-        return self.black_pawns if pawn_type == self.Pawns.BLACK_PAWN else self.white_pawns
 
     def random_move(self):
         pawns = self.get_all_pawns(self.Pawns.BLACK_PAWN)
