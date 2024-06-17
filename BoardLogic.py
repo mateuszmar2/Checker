@@ -85,7 +85,7 @@ class BoardLogic:
         Check if field exists on the board
         """
         exists = row >= 0 and row < self.size and column >= 0 and column < self.size
-        self.logger.debug(f"Position ({row}, {column}) exists: {exists}")
+        #self.logger.debug(f"Position ({row}, {column}) exists: {exists}")
         return exists
 
     def check_position(self, row, column):
@@ -101,7 +101,7 @@ class BoardLogic:
             position_pawn = self.Pawns.BLACK_QUEEN
         elif (row, column) in self.white_queens:
             position_pawn = self.Pawns.WHITE_QUEEN
-        self.logger.debug(f"Position ({row}, {column}) pawn: {position_pawn}")
+        #self.logger.debug(f"Position ({row}, {column}) pawn: {position_pawn}")
         return position_pawn
 
     def get_queen_moves(self, row, column, pawn, previous_position=None):
@@ -173,7 +173,6 @@ class BoardLogic:
                 current_position[1] + direction[1],
             )
 
-            print(f"Capture position: {capture_position}")
             if capture_position in path:
                 self.logger.debug(
                     f"Capture position {capture_position} already in path, skipping"
@@ -183,7 +182,6 @@ class BoardLogic:
                 capture_position[0] + direction[0],
                 capture_position[1] + direction[1],
             )
-            print(f"Next position: {next_position}")
             if not self.field_exists(*capture_position) or not self.field_exists(
                 *next_position
             ):
@@ -191,8 +189,6 @@ class BoardLogic:
 
             on_capture_position = self.check_position(*capture_position)
             on_next_position = self.check_position(*next_position)
-            print(f"on_capture_position: {on_capture_position}")
-            print(f"on_next_position: {on_next_position}")
 
             if not on_capture_position or on_next_position:
                 continue
@@ -265,6 +261,7 @@ class BoardLogic:
         possible_moves = []
 
         pawn = self.check_position(row, column)
+        self.logger.debug(f"[AI] Pawn: {pawn} ({row}, {column})")
         if not pawn:
             return possible_moves
 
@@ -274,11 +271,15 @@ class BoardLogic:
             )
             possible_moves.extend(normal_queen_moves)
             possible_moves.extend(capture_queen_moves)
+            self.logger.debug(f"[AI] Queen moves: {possible_moves}")
         else:
             possible_moves.extend(self.get_capture_moves(pawn, path=[(row, column)]))
             possible_moves.extend(self.get_normal_moves(row, column, pawn))
+            self.logger.debug(f"[AI] Pawn moves: {possible_moves}")
+        
+        if not possible_moves:
+            self.logger.debug(f"[AI] No moves")
 
-        self.logger.debug(f"[AI] Possible moves: {possible_moves}")
         return possible_moves
 
     def make_move(self, row, column, next_row, next_column, possible_moves):
@@ -466,7 +467,10 @@ class BoardLogic:
         """
         Check if the AI has any possible move
         """
-        for row, column in self.black_pawns if self.turn == "black" else self.white_pawns:
+        pawns = self.get_all_pawns(self.turn)
+
+        for row, column in pawns:
+            self.logger.debug(f"[AI] Can black ({row}, {column}) move?")
             if self.ai_get_possible_moves(row, column):
                 return True
         return False
@@ -481,7 +485,7 @@ class BoardLogic:
                 random_move = random.choice(moves)
                 self.make_move(random_move[0][0], random_move[0][1], random_move[-1][0], random_move[-1][1], moves)
                 return
-        self.logger.debug("AI could not find a valid move.")
+        self.logger.debug("[AI] could not find a valid move.")
 
     def evaluate_board(self):
         """
@@ -519,7 +523,7 @@ class BoardLogic:
         # black_score += len(self.black_kings) * 20
         # white_score += len(self.white_kings) * 20
 
-        self.logger.debug(f"AI Board evaluation: black_score={black_score}, white_score={white_score}")
+        self.logger.debug(f"[AI] Board evaluation: black_score={black_score}, white_score={white_score}")
 
         return black_score - white_score
 
@@ -548,14 +552,14 @@ class BoardLogic:
             self.logger.debug(f"[AI] maximizing")
             max_eval = float('-inf')
             best_move = None
-            for row, column in sorted(self.black_pawns):
+            for row, column in sorted(self.get_all_pawns("black")):
                 self.logger.debug(f"[AI][max] black pawn {row, column}")
                 for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: -self.evaluate_move(m)):
                     self.logger.debug(f"[AI][max] considering move {move}")
-                    captures = self.apply_move(move, self.Pawns.BLACK_PAWN)
+                    captures = self.apply_move(move)
                     eval, _ = self.minimax(depth - 1, alpha, beta, False)
                     self.logger.debug(f"[AI][max] move {move} evaluation: {eval}")
-                    self.revert_move(move, self.Pawns.BLACK_PAWN, captures)
+                    self.revert_move(move, captures)
                     if eval > max_eval:
                         max_eval = eval
                         best_move = move
@@ -569,7 +573,7 @@ class BoardLogic:
             self.logger.debug(f"[AI] minimizing")
             min_eval = float('inf')
             best_move = None
-            for row, column in sorted(self.white_pawns):
+            for row, column in sorted(self.get_all_pawns("white")):
                 self.logger.debug(f"[AI][min] white pawn {row, column}")
                 for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: self.evaluate_move(m)):
                     self.logger.debug(f"[AI][min] considering move {move}")
@@ -587,54 +591,78 @@ class BoardLogic:
             self.logger.debug(f"[AI][min] best move: {best_move} with evaluation: {min_eval}")
             return min_eval, best_move
 
-    def apply_move(self, move, pawn):
+    def apply_move(self, move):
         """
         Apply a move on the board without changing turns.
         """
         start, end = move[0], move[-1]
         captures = []
-        self.logger.debug(f"AI Applying move: {move}")
+        self.logger.debug(f"[AI] Applying test move: {move}")
+        pawn = self.check_position(*move[0])
 
         # Remove pawn from the start position and add to the end position
-        if pawn == self.Pawns.BLACK_PAWN:
+        if self.turn == "black" and pawn.value["type"] == "pawn":
             self.black_pawns.remove(start)
             self.black_pawns.append(end)
-        elif pawn == self.Pawns.WHITE_PAWN:
+        if self.turn == "black" and pawn.value["type"] == "queen":
+            self.black_queens.remove(start)
+            self.black_queens.append(end)
+        if self.turn == "white" and pawn.value["type"] == "pawn":
             self.white_pawns.remove(start)
             self.white_pawns.append(end)
+        if self.turn == "white" and pawn.value["type"] == "queen":
+            self.white_queens.remove(start)
+            self.white_queens.append(end)
 
         # Handle captures
         for capture in move[1:-1]:
             if capture in self.black_pawns:
                 self.black_pawns.remove(capture)
                 captures.append((capture, self.Pawns.BLACK_PAWN))
+            elif capture in self.black_queens:
+                self.black_queens.remove(capture)
+                captures.append((capture, self.Pawns.BLACK_QUEEN))
             elif capture in self.white_pawns:
                 self.white_pawns.remove(capture)
                 captures.append((capture, self.Pawns.WHITE_PAWN))
+            elif capture in self.white_queens:
+                self.white_queens.remove(capture)
+                captures.append((capture, self.Pawns.WHITE_QUEEN))
 
         return captures
 
-    def revert_move(self, move, pawn, captures):
+    def revert_move(self, move, captures):
         """
         Revert a move on the board without changing turns.
         """
         start, end = move[0], move[-1]
-        self.logger.debug(f"AI Reverting move: {move}")
+        self.logger.debug(f"[AI] Reverting test move: {move}")
+        pawn = self.check_position(*move[-1])
 
         # Remove pawn from the end position and add to the start position
-        if pawn == self.Pawns.BLACK_PAWN:
+        if self.turn == "black" and pawn.value["type"] == "pawn":
             self.black_pawns.remove(end)
             self.black_pawns.append(start)
-        elif pawn == self.Pawns.WHITE_PAWN:
+        elif self.turn == "black"  and pawn.value["type"] == "queen":
+            self.black_queens.remove(end)
+            self.black_queens.append(start)
+        if self.turn == "white" and pawn.value["type"] == "pawn":
             self.white_pawns.remove(end)
             self.white_pawns.append(start)
+        elif self.turn == "white"  and pawn.value["type"] == "queen":
+            self.white_queens.remove(end)
+            self.white_queens.append(start)
 
         # Restore captures
         for capture, captured_pawn in captures:
             if captured_pawn == self.Pawns.BLACK_PAWN:
                 self.black_pawns.append(capture)
+            elif captured_pawn == self.Pawns.BLACK_QUEEN:
+                self.black_queens.append(capture)
             elif captured_pawn == self.Pawns.WHITE_PAWN:
                 self.white_pawns.append(capture)
+            elif captured_pawn == self.Pawns.WHITE_QUEEN:
+                self.white_queens.append(capture)
 
 
     def evaluate_move(self, move):
@@ -678,11 +706,11 @@ class BoardLogic:
         """
         Perform the AI move using minimax.
         """
-        self.logger.debug("AI is making a move.")
+        self.logger.debug("[AI] is making a move.")
         _, best_move = self.minimax(depth, float('-inf'), float('inf'), True)
         if best_move:
             self.make_move(best_move[0][0], best_move[0][1], best_move[-1][0], best_move[-1][1], [best_move])
-            self.logger.debug(f"AI made move: {best_move}")
+            self.logger.debug(f"[AI] made move: {best_move}")
         else:
-            self.logger.debug("AI could not find a valid move.")
+            self.logger.debug("[AI] could not find a valid move.")
             self.change_turn()

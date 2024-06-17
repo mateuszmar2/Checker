@@ -84,7 +84,7 @@ class BoardGUI:
                 self.logger.debug("AI's turn")
                 #self.board_logic.random_move()
                 pygame.display.flip()
-                self.board_logic.ai_move(depth=2)
+                self.board_logic.ai_move(depth=1)
                 continue
 
             # Handle events
