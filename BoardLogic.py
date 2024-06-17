@@ -577,10 +577,10 @@ class BoardLogic:
                 self.logger.debug(f"[AI][min] white pawn {row, column}")
                 for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: self.evaluate_move(m)):
                     self.logger.debug(f"[AI][min] considering move {move}")
-                    captures = self.apply_move(move, self.Pawns.WHITE_PAWN)
+                    captures = self.apply_move(move)
                     eval, _ = self.minimax(depth - 1, alpha, beta, True)
                     self.logger.debug(f"[AI][min] move {move} evaluation: {eval}")
-                    self.revert_move(move, self.Pawns.WHITE_PAWN, captures)
+                    self.revert_move(move, captures)
                     if eval < min_eval:
                         min_eval = eval
                         best_move = move
@@ -601,16 +601,16 @@ class BoardLogic:
         pawn = self.check_position(*move[0])
 
         # Remove pawn from the start position and add to the end position
-        if self.turn == "black" and pawn.value["type"] == "pawn":
+        if pawn.value["player"] == "black" and pawn.value["type"] == "pawn":
             self.black_pawns.remove(start)
             self.black_pawns.append(end)
-        if self.turn == "black" and pawn.value["type"] == "queen":
+        elif pawn.value["player"] == "black" and pawn.value["type"] == "queen":
             self.black_queens.remove(start)
             self.black_queens.append(end)
-        if self.turn == "white" and pawn.value["type"] == "pawn":
+        elif pawn.value["player"] == "white" and pawn.value["type"] == "pawn":
             self.white_pawns.remove(start)
             self.white_pawns.append(end)
-        if self.turn == "white" and pawn.value["type"] == "queen":
+        elif pawn.value["player"] == "white" and pawn.value["type"] == "queen":
             self.white_queens.remove(start)
             self.white_queens.append(end)
 
@@ -640,16 +640,16 @@ class BoardLogic:
         pawn = self.check_position(*move[-1])
 
         # Remove pawn from the end position and add to the start position
-        if self.turn == "black" and pawn.value["type"] == "pawn":
+        if pawn.value["player"] == "black" and pawn.value["type"] == "pawn":
             self.black_pawns.remove(end)
             self.black_pawns.append(start)
-        elif self.turn == "black"  and pawn.value["type"] == "queen":
+        elif pawn.value["player"] == "black" and pawn.value["type"] == "queen":
             self.black_queens.remove(end)
             self.black_queens.append(start)
-        if self.turn == "white" and pawn.value["type"] == "pawn":
+        elif pawn.value["player"] == "white" and pawn.value["type"] == "pawn":
             self.white_pawns.remove(end)
             self.white_pawns.append(start)
-        elif self.turn == "white"  and pawn.value["type"] == "queen":
+        elif pawn.value["player"] == "white" and pawn.value["type"] == "queen":
             self.white_queens.remove(end)
             self.white_queens.append(start)
 
