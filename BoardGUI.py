@@ -20,7 +20,7 @@ class BoardGUI:
         """
         # Initialize logger
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -78,7 +78,7 @@ class BoardGUI:
                 self.logger.debug("AI's turn")
                 #self.board_logic.random_move()
                 pygame.display.flip()
-                self.board_logic.ai_move(depth=5)
+                self.board_logic.ai_move(depth=2)
                 continue
 
             # Handle events

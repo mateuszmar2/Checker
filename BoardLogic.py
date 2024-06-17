@@ -29,7 +29,7 @@ class BoardLogic:
 
         # Initialize logger
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -245,16 +245,6 @@ class BoardLogic:
             if not self.has_possible_move():
                 self.logger.debug(f"No possible moves for {self.turn} either!")
                 self.finish_game(winner=None)
-        self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
-        self.logger.debug(f"Turn changed to: {self.turn}")
-        if not self.has_possible_move():
-            self.logger.debug(f"No possible moves for {self.turn}!")
-            self.turn = self.Pawns.BLACK_PAWN if self.turn == self.Pawns.WHITE_PAWN else self.Pawns.WHITE_PAWN
-            self.logger.debug(f"Turn changed to: {self.turn}")
-            if not self.has_possible_move():
-                self.logger.debug(f"No possible moves for {self.turn}!")
-                self.logger.debug("Game over!")
-                pygame.quit()
 
     def is_pawn_turn(self, pawn):
         """
