@@ -46,7 +46,7 @@ class BoardLogic:
 
         # Initialize logger
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.INFO)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -487,6 +487,74 @@ class BoardLogic:
                 return
         self.logger.debug("[AI] could not find a valid move.")
 
+    
+    def count_safe_pawns(self, player):
+        """
+        Count the number of safe pawns for the given player.
+        A pawn is considered safe if it cannot be captured in the next move.
+        """
+        safe_pawns = 0
+        pawns = self.get_all_pawns(player)
+
+        for row, column in pawns:
+            if self.is_pawn_safe(row, column):
+                safe_pawns += 1
+
+        return safe_pawns
+
+    def is_pawn_safe(self, row, column):
+        """
+        Check if a pawn at the given position is safe from capture.
+        """
+        directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
+        for direction in directions:
+            opponent_position = (row + direction[0], column + direction[1])
+            landing_position = (row - direction[0], column - direction[1])
+            if (self.field_exists(*opponent_position) and
+                    self.check_position(*opponent_position) and
+                    self.check_position(*opponent_position).value["player"] != self.turn and
+                    self.field_exists(*landing_position) and
+                    not self.check_position(*landing_position)):
+                return False
+        return True
+
+
+    def calculate_dominance(self, player):
+        """
+        Calculate the dominance score based on the number of controlled pieces
+        and potential capture moves.
+        """
+        dominance_score = 0
+        pawns = self.get_all_pawns(player)
+
+        for row, column in pawns:
+            possible_moves = self.ai_get_possible_moves(row, column)
+            for move in possible_moves:
+                if len(move) > 2:  # Capture move
+                    dominance_score += 1
+
+        return dominance_score
+
+
+    def evaluate_queen_position(self, row, column, player):
+        """
+        Evaluate the position of the queen for additional score.
+        """
+        score = 0
+        directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
+
+        for direction in directions:
+            next_position = (row + direction[0], column + direction[1])
+            while self.field_exists(*next_position):
+                if self.check_position(*next_position):
+                    if self.check_position(*next_position).value["player"] != player:
+                        score += 10  # Bonus for potential capture
+                    break
+                next_position = (next_position[0] + direction[0], next_position[1] + direction[1])
+
+        return score
+
+
     def evaluate_board(self):
         """
         Evaluate the board and return a score based on an advanced heuristic.
@@ -496,12 +564,20 @@ class BoardLogic:
 
         # Piece count and position
         for row, column in self.black_pawns:
-            black_score += 10  # Base score for pawn
-            black_score += row  # Bonus for advancing pawns
+            black_score += 10
+            black_score += row
         
         for row, column in self.white_pawns:
-            white_score += 10  # Base score for pawn
-            white_score += (self.size - 1 - row)  # Bonus for advancing pawns
+            white_score += 10
+            white_score += (self.size - 1 - row)
+
+        for row, column in self.black_queens:
+            black_score += 50
+            black_score += self.evaluate_queen_position(row, column, "black")
+        
+        for row, column in self.white_queens:
+            white_score += 50
+            white_score += self.evaluate_queen_position(row, column, "white")
 
         # Center control
         center_positions = self.get_center_positions()
@@ -519,17 +595,22 @@ class BoardLogic:
         black_score += black_moves
         white_score += white_moves
 
-        # King count (if applicable, adjust this if you have implemented king logic)
-        # black_score += len(self.black_kings) * 20
-        # white_score += len(self.white_kings) * 20
+        # Safety of pawns
+        black_safe_pawns = self.count_safe_pawns("black")
+        white_safe_pawns = self.count_safe_pawns("white")
+        black_score += black_safe_pawns * 5
+        white_score += white_safe_pawns * 5
+
+        # Domination (controllng more pieces and threatening more captures)
+        black_dominance = self.calculate_dominance("black")
+        white_dominance = self.calculate_dominance("white")
+        black_score += black_dominance * 10
+        white_score += white_dominance * 10
 
         self.logger.debug(f"[AI] Board evaluation: black_score={black_score}, white_score={white_score}")
 
         return black_score - white_score
 
-    def get_board_hash(self):
-        board_state = (tuple(sorted(self.black_pawns)), tuple(sorted(self.white_pawns)), self.turn)
-        return hashlib.sha1(str(board_state).encode()).hexdigest()
 
     def minimax(self, depth, alpha, beta, maximizing_player):
         """
@@ -537,15 +618,10 @@ class BoardLogic:
         """
         self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
 
-        #board_hash = self.get_board_hash()
-        #if board_hash in self.transposition_table:
-        #    return self.transposition_table[board_hash]
-
         self.logger.debug(f"[AI] No entry in hashmap, calculating moves")
         if depth == 0 or not self.ai_has_possible_move():
             score = self.evaluate_board()
             self.logger.debug(f"[AI] Minimax evaluation at depth 0: {score}")
-            #self.transposition_table[board_hash] = (score, None)
             return score, None
 
         if maximizing_player:
@@ -566,7 +642,6 @@ class BoardLogic:
                     alpha = max(alpha, eval)
                     if beta <= alpha:
                         break
-            #self.transposition_table[board_hash] = (max_eval, best_move)
             self.logger.debug(f"[AI][max] best move: {best_move} with evaluation: {max_eval}")
             return max_eval, best_move
         else:
@@ -587,7 +662,6 @@ class BoardLogic:
                     beta = min(beta, eval)
                     if beta <= alpha:
                         break
-            #self.transposition_table[board_hash] = (min_eval, best_move)
             self.logger.debug(f"[AI][min] best move: {best_move} with evaluation: {min_eval}")
             return min_eval, best_move
 
