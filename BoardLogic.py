@@ -537,9 +537,9 @@ class BoardLogic:
         """
         self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
 
-        board_hash = self.get_board_hash()
-        if board_hash in self.transposition_table:
-            return self.transposition_table[board_hash]
+        #board_hash = self.get_board_hash()
+        #if board_hash in self.transposition_table:
+        #    return self.transposition_table[board_hash]
 
         self.logger.debug(f"[AI] No entry in hashmap, calculating moves")
         if depth == 0 or not self.ai_has_possible_move():
@@ -566,7 +566,7 @@ class BoardLogic:
                     alpha = max(alpha, eval)
                     if beta <= alpha:
                         break
-            self.transposition_table[board_hash] = (max_eval, best_move)
+            #self.transposition_table[board_hash] = (max_eval, best_move)
             self.logger.debug(f"[AI][max] best move: {best_move} with evaluation: {max_eval}")
             return max_eval, best_move
         else:
@@ -587,7 +587,7 @@ class BoardLogic:
                     beta = min(beta, eval)
                     if beta <= alpha:
                         break
-            self.transposition_table[board_hash] = (min_eval, best_move)
+            #self.transposition_table[board_hash] = (min_eval, best_move)
             self.logger.debug(f"[AI][min] best move: {best_move} with evaluation: {min_eval}")
             return min_eval, best_move
 
