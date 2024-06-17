@@ -145,32 +145,32 @@ class BoardLogic:
                         possible_capture_moves.append(move)
                         self.logger.debug(f"Possible capture move path: {move}")
                         possible_capture_moves.extend(
-                            self.get_queen_capture_moves(move, pawn)
+                            self.get_capture_moves(pawn, path=move[:])
                         )
 
         return possible_normal_moves, possible_capture_moves
 
-    def get_queen_capture_moves(self, path, pawn):
+    def get_capture_moves(self, pawn, path):
         """
-        Get possible capture moves for the queen on the given position from the given path
+        Get possible capture moves for the pawn on the given position
         """
-
         possible_capture_moves = []
+        current_position = path[-1]
 
-        directions = [
-            (1, -1),
-            (1, 1),
-            (-1, -1),
-            (-1, 1),
-        ]
-        if path:
-            current_position = path[-1]
+        if pawn == self.Pawns.BLACK_PAWN:
+            directions = [(1, -1), (1, 1)]
+        elif pawn == self.Pawns.WHITE_PAWN:
+            directions = [(-1, -1), (-1, 1)]
+        elif pawn.value["type"] == "queen":
+            directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
 
         for direction in directions:
             capture_position = (
                 current_position[0] + direction[0],
                 current_position[1] + direction[1],
             )
+
+            print(f"Capture position: {capture_position}")
             if capture_position in path:
                 self.logger.debug(
                     f"Capture position {capture_position} already in path, skipping"
@@ -180,64 +180,31 @@ class BoardLogic:
                 capture_position[0] + direction[0],
                 capture_position[1] + direction[1],
             )
-            if not self.field_exists(*capture_position) or self.check_position(
+            print(f"Next position: {next_position}")
+            if not self.field_exists(*capture_position) or not self.field_exists(
                 *next_position
             ):
                 continue
+
             on_capture_position = self.check_position(*capture_position)
             on_next_position = self.check_position(*next_position)
+            print(f"on_capture_position: {on_capture_position}")
+            print(f"on_next_position: {on_next_position}")
+
             if not on_capture_position or on_next_position:
                 continue
+
             if on_capture_position.value["player"] != pawn.value["player"]:
                 move = path.copy()
                 move.append(capture_position)
                 move.append(next_position)
                 possible_capture_moves.append(move)
                 self.logger.debug(f"Possible capture move path: {move}")
-                possible_capture_moves.extend(self.get_queen_capture_moves(move, pawn))
+                # Pass new list to avoid modifying the original path
+                possible_capture_moves.extend(
+                    self.get_capture_moves(pawn, path=move[:])
+                )
 
-        return possible_capture_moves
-
-    def get_capture_moves(self, row, column, pawn, path):
-        """
-        Get possible capture moves for the pawn on the given position
-        """
-        possible_capture_moves = []
-
-        if pawn == self.Pawns.BLACK_PAWN:
-            direction = 1
-        elif pawn == self.Pawns.WHITE_PAWN:
-            direction = -1
-
-        for neighbour_position in [
-            (row + direction * 1, column - 1),
-            (row + direction * 1, column + 1),
-        ]:
-            if not self.field_exists(*neighbour_position):
-                continue
-            in_neighbour_position = self.check_position(*neighbour_position)
-            if (
-                in_neighbour_position
-                and in_neighbour_position.value["player"] != pawn.value["player"]
-            ):
-                if neighbour_position[1] < column:
-                    next_column = neighbour_position[1] - 1
-                elif neighbour_position[1] > column:
-                    next_column = neighbour_position[1] + 1
-                next_position = (neighbour_position[0] + direction * 1, next_column)
-                if not self.field_exists(*next_position):
-                    continue
-                if not self.check_position(*next_position):
-                    move = path.copy()
-                    move.append((row, column))
-                    move.append(neighbour_position)
-                    move.append(next_position)
-                    possible_capture_moves.append(move)
-                    self.logger.debug(f"Possible capture move path: {move}")
-                    # Pass new list to avoid modifying the original path
-                    possible_capture_moves.extend(
-                        self.get_capture_moves(*next_position, pawn, path=move[:])
-                    )
         return possible_capture_moves
 
     def get_normal_moves(self, row, column, pawn):
@@ -282,7 +249,7 @@ class BoardLogic:
             possible_moves.extend(normal_queen_moves)
             possible_moves.extend(capture_queen_moves)
         else:
-            possible_moves.extend(self.get_capture_moves(row, column, pawn, []))
+            possible_moves.extend(self.get_capture_moves(pawn, path=[(row, column)]))
             possible_moves.extend(self.get_normal_moves(row, column, pawn))
 
         return possible_moves
