@@ -618,8 +618,7 @@ class BoardLogic:
         """
         self.logger.debug(f"[AI] Enter minimax depth {depth} alpha {alpha} beta {beta}")
 
-        self.logger.debug(f"[AI] No entry in hashmap, calculating moves")
-        if depth == 0 or not self.ai_has_possible_move():
+        if depth == 0 or not self.has_possible_move():
             score = self.evaluate_board()
             self.logger.debug(f"[AI] Minimax evaluation at depth 0: {score}")
             return score, None
@@ -628,7 +627,7 @@ class BoardLogic:
             self.logger.debug(f"[AI] maximizing")
             max_eval = float('-inf')
             best_move = None
-            for row, column in sorted(self.get_all_pawns("black")):
+            for row, column in sorted(self.get_all_pawns(self.turn)):
                 self.logger.debug(f"[AI][max] black pawn {row, column}")
                 for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: -self.evaluate_move(m)):
                     self.logger.debug(f"[AI][max] considering move {move}")
@@ -648,7 +647,8 @@ class BoardLogic:
             self.logger.debug(f"[AI] minimizing")
             min_eval = float('inf')
             best_move = None
-            for row, column in sorted(self.get_all_pawns("white")):
+            opponent = "white" if self.turn == "black" else "black"
+            for row, column in sorted(self.get_all_pawns(opponent)):
                 self.logger.debug(f"[AI][min] white pawn {row, column}")
                 for move in sorted(self.ai_get_possible_moves(row, column), key=lambda m: self.evaluate_move(m)):
                     self.logger.debug(f"[AI][min] considering move {move}")

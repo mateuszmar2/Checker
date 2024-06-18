@@ -1,5 +1,6 @@
 import pygame
 import logging
+import time
 from pygame.locals import (
     K_ESCAPE,
     KEYDOWN,
@@ -20,7 +21,7 @@ class BoardGUI:
         """
         # Initialize logger
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -80,12 +81,13 @@ class BoardGUI:
                 self.draw_pawn(row, column, self.board_logic.Pawns.WHITE_QUEEN)
 
 
-            if self.board_logic.turn == "black":
-                self.logger.debug("AI's turn")
-                #self.board_logic.random_move()
-                pygame.display.flip()
-                self.board_logic.ai_move(depth=3)
-                continue
+            #if self.board_logic.turn == "black":
+            self.logger.debug(f"AI's turn [{self.board_logic.turn}]")
+            #self.board_logic.random_move()
+            pygame.display.flip()
+            self.board_logic.ai_move(depth=3)
+            time.sleep(0.2)
+            continue
 
             # Handle events
             for event in [pygame.event.wait()] + pygame.event.get():
